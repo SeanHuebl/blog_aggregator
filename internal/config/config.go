@@ -35,11 +35,21 @@ func (c *Config) SetUser(username string) error {
 }
 
 type Commands struct {
-	commands map[string]func(*State, Command) error
+	Commands map[string]func(*State, Command) error
 }
 
 func (c *Commands) Register(name string, f func(*State, Command) error) {
-	c.commands[name] = f
+	c.Commands[name] = f
+}
+
+func (c *Commands) Run(s *State, cmd Command) error {
+	f, err := c.Commands[cmd.name]
+	if !err {
+		f(s, cmd)
+		return nil
+	}
+
+	return fmt.Errorf("command not found")
 }
 
 type Command struct {
@@ -51,7 +61,7 @@ type State struct {
 	ConfigPtr *Config
 }
 
-func handlerLogin(s *State, cmd Command) error {
+func HandlerLogin(s *State, cmd Command) error {
 	if len(cmd.arguments) == 0 {
 		return fmt.Errorf("login expects one argument: username")
 	}
@@ -63,12 +73,10 @@ func handlerLogin(s *State, cmd Command) error {
 	return nil
 }
 
-
 func getConfigFilePath() string {
 	homeDir, _ := os.UserHomeDir()
 	return homeDir + configFileName
 }
-
 
 func Read() Config {
 
