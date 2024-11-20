@@ -1,10 +1,16 @@
 package config
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"os"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/lib/pq"
+	"github.com/seanhuebl/blog_aggregator/internal/database"
 )
 
 const configFileName = "/.gatorconfig.json"
@@ -58,11 +64,12 @@ type Command struct {
 }
 
 type State struct {
+	Db        *database.Queries
 	ConfigPtr *Config
 }
 
 func HandlerLogin(s *State, cmd Command) error {
-	if len(cmd.arguments) == 0 {
+	if len(cmd.arguments) < 2 {
 		return fmt.Errorf("login expects one argument: username")
 	}
 
@@ -71,6 +78,22 @@ func HandlerLogin(s *State, cmd Command) error {
 		return fmt.Errorf("%s", err)
 	}
 	return nil
+}
+
+func HandlerRegister(s *State, cmd Command) error {
+	if len(cmd.arguments) < 2 {
+		return fmt.Errorf("register expects one argument: username")
+	}
+
+	_, err := s.Db.CreateUser(context.Background(), database.CreateUserParams{ID: uuid.New(), CreatedAt: time.Now(), UpdatedAt: time.Now(), Name: cmd.arguments[2]})
+	if err != nil {
+		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" {
+			return fmt.Errorf("user already exists: %v", err)
+		}
+		return fmt.Errorf("failed to create user: %v", err)
+	}
+	return nil
+
 }
 
 func getConfigFilePath() string {
