@@ -11,27 +11,25 @@ import (
 )
 
 func main() {
+	if len(os.Args) < 2 {
+		fmt.Printf("not enough arguments")
+		os.Exit(1)
+	}
+
 	conf := config.Read()
 	state := config.State{
 		ConfigPtr: &conf,
 	}
-	commands := config.Commands{
+	commands := &config.Commands{
 		Commands: make(map[string]func(*config.State, config.Command) error),
 	}
+	command := config.Command{
+		Name:      os.Args[1],
+		Arguments: os.Args[2:],
+	}
 	commands.Register("login", config.HandlerLogin)
-
-	args := os.Args
-
-	if len(args) < 2 {
-		fmt.Println("cannot run with fewer than two arguments")
-		os.Exit(1)
-	}
-	if len(args) == 2 && (args[1] == "login" || args[1] == "register") {
-		fmt.Println("username required")
-		os.Exit(1)
-	}
-	// need some way to distinguish between input commands maybe struct?
-	state.ConfigPtr.SetUser(args[2])
+	commands.Register("register", config.HandlerRegister)
+	commands.Register("reset", config.HandlerReset)
 	db, err := sql.Open("postgres", state.ConfigPtr.DbUrl)
 	if err != nil {
 		println(err)
@@ -40,7 +38,8 @@ func main() {
 	dbQueries := database.New(db)
 	state.Db = dbQueries
 
-	c := config.Read()
-	fmt.Println(c)
-
+	if err := commands.Run(&state, command); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 }
