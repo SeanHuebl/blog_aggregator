@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 	"github.com/seanhuebl/blog_aggregator/internal/database"
+	"github.com/seanhuebl/blog_aggregator/internal/rss"
 )
 
 const configFileName = "/.gatorconfig.json"
@@ -140,6 +141,49 @@ func HandlerReset(s *State, cmd Command) error {
 	return nil
 }
 
+func HandlerAgg(s *State, cmd Command) error {
+	if len(cmd.Arguments) != 0 {
+		return fmt.Errorf("agg takes zero arguments")
+	}
+	rssURL := "https://www.wagslane.dev/index.xml"
+	feed, err := rss.FetchFeed(context.Background(), rssURL)
+	if err != nil {
+		return fmt.Errorf("error fetching feed at %v: %v", rssURL, err)
+	}
+	fmt.Println(feed)
+	return nil
+}
+
+func HandlerAddFeed(s *State, cmd Command) error {
+	if len(cmd.Arguments) != 2 {
+		return fmt.Errorf("addfeed takes exactly two arguments")
+	}
+	user, err := s.Db.GetUser(context.Background(), s.ConfigPtr.CurrentUserName)
+	if err != nil {
+		return fmt.Errorf("error getting user: %v", err)
+	}
+	id := uuid.New()
+	feed, err := s.Db.AddFeed(context.Background(), database.AddFeedParams{ID: id, Name: cmd.Arguments[0], Url: cmd.Arguments[1], UserID: user.ID})
+	if err != nil {
+		return fmt.Errorf("unable to add feed: %v", err)
+	}
+	fmt.Println(feed)
+	return nil
+}
+
+func HandlerFeeds(s *State, cmd Command) error {
+	if len(cmd.Arguments) != 0 {
+		return fmt.Errorf("feeds takes zero arguments")
+	}
+	feeds, err := s.Db.GetFeeds(context.Background())
+	if err != nil {
+		return fmt.Errorf("unable to get feeds: %v", err)
+	}
+	for _, feed := range feeds {
+		fmt.Printf("%v\n", feed)
+	}
+	return nil
+}
 func getConfigFilePath() string {
 	homeDir, _ := os.UserHomeDir()
 	return homeDir + configFileName
