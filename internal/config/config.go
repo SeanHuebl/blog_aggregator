@@ -86,7 +86,6 @@ func HandlerRegister(s *State, cmd Command) error {
 		return fmt.Errorf("register expects one argument: username")
 	}
 	id := uuid.New()
-	fmt.Println(id)
 	_, err := s.Db.CreateUser(context.Background(), database.CreateUserParams{ID: id, CreatedAt: time.Now(), UpdatedAt: time.Now(), Name: cmd.Arguments[0]})
 	if err != nil {
 		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" {
@@ -110,6 +109,24 @@ func HandlerRegister(s *State, cmd Command) error {
 	fmt.Println(user)
 	return nil
 
+}
+
+func HandlerGetUsers(s *State, cmd Command) error {
+	if len(cmd.Arguments) != 0 {
+		return fmt.Errorf("users takes zero arguments")
+	}
+	users, err := s.Db.GetUsers(context.Background())
+	if err != nil {
+		return fmt.Errorf("%v", err)
+	}
+	for _, user := range users {
+		if user == s.ConfigPtr.CurrentUserName {
+			fmt.Printf("%v (current)\n", user)
+		} else {
+			fmt.Printf("%v\n", user)
+		}
+	}
+	return nil
 }
 
 func HandlerReset(s *State, cmd Command) error {

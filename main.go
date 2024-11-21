@@ -11,11 +11,15 @@ import (
 )
 
 func main() {
+	var arguments []string
 	if len(os.Args) < 2 {
 		fmt.Printf("not enough arguments")
 		os.Exit(1)
+	} else if len(os.Args) > 2 {
+		arguments = os.Args[2:]
+	} else {
+		arguments = nil
 	}
-
 	conf := config.Read()
 	state := config.State{
 		ConfigPtr: &conf,
@@ -25,11 +29,13 @@ func main() {
 	}
 	command := config.Command{
 		Name:      os.Args[1],
-		Arguments: os.Args[2:],
+		Arguments: arguments,
 	}
 	commands.Register("login", config.HandlerLogin)
 	commands.Register("register", config.HandlerRegister)
 	commands.Register("reset", config.HandlerReset)
+	commands.Register("users", config.HandlerGetUsers)
+
 	db, err := sql.Open("postgres", state.ConfigPtr.DbUrl)
 	if err != nil {
 		println(err)
@@ -42,4 +48,5 @@ func main() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
+
 }
