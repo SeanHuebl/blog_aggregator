@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"html"
 	"io"
 	"os"
 	"time"
@@ -67,7 +68,7 @@ type State struct {
 }
 
 func MiddlewareLoggedIn(handler func(s *State, cmd Command, user database.User) error) func(*State, Command) error {
-	
+
 	return func(s *State, cmd Command) error {
 		user, err := s.Db.GetUser(context.Background(), s.ConfigPtr.CurrentUserName)
 		if err != nil {
@@ -161,7 +162,10 @@ func HandlerAgg(s *State, cmd Command) error {
 	if err != nil {
 		return fmt.Errorf("error fetching feed at %v: %v", rssURL, err)
 	}
-	fmt.Println(feed)
+	for _, item := range feed.Channel.Item {
+		content := html.UnescapeString(fmt.Sprintf("%v\n\n", item.PubDate))
+		fmt.Println(content)
+	}
 	return nil
 }
 
@@ -216,6 +220,21 @@ func HandlerFollow(s *State, cmd Command, user database.User) error {
 		return fmt.Errorf("unable to create feedfollow: %v", err)
 	}
 	fmt.Printf("Feed: %v\nUser: %v\n", feed.Name, user.Name)
+	return nil
+}
+
+func HandlerUnfollow(s *State, cmd Command, user database.User) error {
+	if len(cmd.Arguments) != 1 {
+		return fmt.Errorf("unfollow takes one argument")
+	}
+	feed, err := s.Db.GetFeed(context.Background(), cmd.Arguments[0])
+	if err != nil {
+		return fmt.Errorf("unable to get feed: %v", err)
+	}
+	err = s.Db.Unfollow(context.Background(), database.UnfollowParams{UserID: user.ID, FeedID: feed.ID})
+	if err != nil {
+		return fmt.Errorf("unable to unfollow feed: %v", err)
+	}
 	return nil
 }
 
