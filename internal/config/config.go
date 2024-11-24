@@ -180,7 +180,7 @@ func HandlerAddFeed(s *State, cmd Command, user database.User) error {
 	}
 	followID := uuid.New()
 	_, err = s.Db.CreateFeedFollow(
-		context.Background(), database.CreateFeedFollowParams{ID: followID, CreatedAt: time.Now(), UpdatedAt: time.Now(), UserID: user.ID, FeedID: feed.ID},
+		context.Background(), database.CreateFeedFollowParams{ID: followID, UserID: user.ID, FeedID: feed.ID},
 	)
 	if err != nil {
 		return fmt.Errorf("unable to follow feed: %v", err)
@@ -214,7 +214,7 @@ func HandlerFollow(s *State, cmd Command, user database.User) error {
 	followID := uuid.New()
 
 	_, err = s.Db.CreateFeedFollow(
-		context.Background(), database.CreateFeedFollowParams{ID: followID, CreatedAt: time.Now(), UpdatedAt: time.Now(), UserID: user.ID, FeedID: feed.ID},
+		context.Background(), database.CreateFeedFollowParams{ID: followID, UserID: user.ID, FeedID: feed.ID},
 	)
 	if err != nil {
 		return fmt.Errorf("unable to create feedfollow: %v", err)

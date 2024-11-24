@@ -7,6 +7,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,8 +15,8 @@ import (
 
 const createFeedFollow = `-- name: CreateFeedFollow :many
 WITH inserted_feed_follow AS (
-    INSERT INTO feed_follows (id, created_at, updated_at, user_id, feed_id)
-    VALUES ($1, $2, $3, $4, $5)
+    INSERT INTO feed_follows (id, user_id, feed_id)
+    VALUES ($1, $2, $3)
     RETURNING id, created_at, updated_at, user_id, feed_id
 )
 SELECT inserted_feed_follow.id, inserted_feed_follow.created_at, inserted_feed_follow.updated_at, inserted_feed_follow.user_id, inserted_feed_follow.feed_id,
@@ -27,11 +28,9 @@ FROM inserted_feed_follow
 `
 
 type CreateFeedFollowParams struct {
-	ID        uuid.UUID
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	UserID    uuid.UUID
-	FeedID    uuid.UUID
+	ID     uuid.UUID
+	UserID uuid.UUID
+	FeedID uuid.UUID
 }
 
 type CreateFeedFollowRow struct {
@@ -45,13 +44,7 @@ type CreateFeedFollowRow struct {
 }
 
 func (q *Queries) CreateFeedFollow(ctx context.Context, arg CreateFeedFollowParams) ([]CreateFeedFollowRow, error) {
-	rows, err := q.db.QueryContext(ctx, createFeedFollow,
-		arg.ID,
-		arg.CreatedAt,
-		arg.UpdatedAt,
-		arg.UserID,
-		arg.FeedID,
-	)
+	rows, err := q.db.QueryContext(ctx, createFeedFollow, arg.ID, arg.UserID, arg.FeedID)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +75,7 @@ func (q *Queries) CreateFeedFollow(ctx context.Context, arg CreateFeedFollowPara
 }
 
 const getFeedFollowsForUser = `-- name: GetFeedFollowsForUser :many
-SELECT feed_follows.id, feed_follows.created_at, feed_follows.updated_at, feed_follows.user_id, feed_id, users.id, users.created_at, users.updated_at, users.name, feeds.id, feeds.name, url, feeds.user_id,
+SELECT feed_follows.id, feed_follows.created_at, feed_follows.updated_at, feed_follows.user_id, feed_id, users.id, users.created_at, users.updated_at, users.name, feeds.id, feeds.name, url, feeds.created_at, feeds.updated_at, feeds.user_id, last_fetched_at,
     feeds.name AS feed_name,
     users.name AS user_name
 FROM feed_follows
@@ -92,21 +85,24 @@ WHERE users.id = $1
 `
 
 type GetFeedFollowsForUserRow struct {
-	ID          uuid.UUID
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	UserID      uuid.UUID
-	FeedID      uuid.UUID
-	ID_2        uuid.UUID
-	CreatedAt_2 time.Time
-	UpdatedAt_2 time.Time
-	Name        string
-	ID_3        uuid.UUID
-	Name_2      string
-	Url         string
-	UserID_2    uuid.UUID
-	FeedName    string
-	UserName    string
+	ID            uuid.UUID
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	UserID        uuid.UUID
+	FeedID        uuid.UUID
+	ID_2          uuid.UUID
+	CreatedAt_2   time.Time
+	UpdatedAt_2   time.Time
+	Name          string
+	ID_3          uuid.UUID
+	Name_2        string
+	Url           string
+	CreatedAt_3   time.Time
+	UpdatedAt_3   time.Time
+	UserID_2      uuid.UUID
+	LastFetchedAt sql.NullTime
+	FeedName      string
+	UserName      string
 }
 
 func (q *Queries) GetFeedFollowsForUser(ctx context.Context, id uuid.UUID) ([]GetFeedFollowsForUserRow, error) {
@@ -131,7 +127,10 @@ func (q *Queries) GetFeedFollowsForUser(ctx context.Context, id uuid.UUID) ([]Ge
 			&i.ID_3,
 			&i.Name_2,
 			&i.Url,
+			&i.CreatedAt_3,
+			&i.UpdatedAt_3,
 			&i.UserID_2,
+			&i.LastFetchedAt,
 			&i.FeedName,
 			&i.UserName,
 		); err != nil {

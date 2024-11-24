@@ -13,3 +13,4 @@ SELECT id,
     name
 FROM feeds
 WHERE url = $1;
+-- name: MarkFeedFetched :exec

@@ -14,7 +14,7 @@ import (
 const addFeed = `-- name: AddFeed :one
 INSERT INTO feeds (id, name, url, user_id)
 VALUES ($1, $2, $3, $4)
-RETURNING id, name, url, user_id
+RETURNING id, name, url, created_at, updated_at, user_id, last_fetched_at
 `
 
 type AddFeedParams struct {
@@ -36,7 +36,10 @@ func (q *Queries) AddFeed(ctx context.Context, arg AddFeedParams) (Feed, error) 
 		&i.ID,
 		&i.Name,
 		&i.Url,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 		&i.UserID,
+		&i.LastFetchedAt,
 	)
 	return i, err
 }
