@@ -162,11 +162,19 @@ func HandlerAddFeed(s *State, cmd Command) error {
 	if err != nil {
 		return fmt.Errorf("error getting user: %v", err)
 	}
-	id := uuid.New()
-	feed, err := s.Db.AddFeed(context.Background(), database.AddFeedParams{ID: id, Name: cmd.Arguments[0], Url: cmd.Arguments[1], UserID: user.ID})
+	FeedID := uuid.New()
+	feed, err := s.Db.AddFeed(context.Background(), database.AddFeedParams{ID: FeedID, Name: cmd.Arguments[0], Url: cmd.Arguments[1], UserID: user.ID})
 	if err != nil {
 		return fmt.Errorf("unable to add feed: %v", err)
 	}
+	followID := uuid.New()
+	_, err = s.Db.CreateFeedFollow(
+		context.Background(), database.CreateFeedFollowParams{ID: followID, CreatedAt: time.Now(), UpdatedAt: time.Now(), UserID: user.ID, FeedID: feed.ID},
+	)
+	if err != nil {
+		return fmt.Errorf("unable to follow feed: %v", err)
+	}
+
 	fmt.Println(feed)
 	return nil
 }
@@ -182,6 +190,48 @@ func HandlerFeeds(s *State, cmd Command) error {
 	for _, feed := range feeds {
 		fmt.Printf("%v\n", feed)
 	}
+	return nil
+}
+func HandlerFollow(s *State, cmd Command) error {
+	if len(cmd.Arguments) != 1 {
+		return fmt.Errorf("follow takes one argument")
+	}
+	feed, err := s.Db.GetFeed(context.Background(), cmd.Arguments[0])
+	if err != nil {
+		return fmt.Errorf("unable to get feed: %v", err)
+	}
+	user, err := s.Db.GetUser(context.Background(), s.ConfigPtr.CurrentUserName)
+	if err != nil {
+		return fmt.Errorf("unable to get current user: %v", err)
+	}
+	followID := uuid.New()
+
+	_, err = s.Db.CreateFeedFollow(
+		context.Background(), database.CreateFeedFollowParams{ID: followID, CreatedAt: time.Now(), UpdatedAt: time.Now(), UserID: user.ID, FeedID: feed.ID},
+	)
+	if err != nil {
+		return fmt.Errorf("unable to create feedfollow: %v", err)
+	}
+	fmt.Printf("Feed: %v\nUser: %v\n", feed.Name, user.Name)
+	return nil
+}
+
+func HandlerFollowing(s *State, cmd Command) error {
+	if len(cmd.Arguments) != 0 {
+		return fmt.Errorf("following takes zero arguments")
+	}
+	user, err := s.Db.GetUser(context.Background(), s.ConfigPtr.CurrentUserName)
+	if err != nil {
+		return fmt.Errorf("unable to get user: %v", err)
+	}
+	feedsFollowed, err := s.Db.GetFeedFollowsForUser(context.Background(), user.ID)
+	if err != nil {
+		return fmt.Errorf("unable to get user's feeds: %v", err)
+	}
+	for _, feed := range feedsFollowed {
+		fmt.Println(feed.FeedName)
+	}
+
 	return nil
 }
 func getConfigFilePath() string {

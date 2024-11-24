@@ -38,7 +38,9 @@ func main() {
 	commands.Register("agg", config.HandlerAgg)
 	commands.Register("addfeed", config.HandlerAddFeed)
 	commands.Register("feeds", config.HandlerFeeds)
-
+	commands.Register("follow", config.HandlerFollow)
+	commands.Register("following", config.HandlerFollowing)
+	
 	db, err := sql.Open("postgres", state.ConfigPtr.DbUrl)
 	if err != nil {
 		println(err)
