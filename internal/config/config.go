@@ -66,6 +66,17 @@ type State struct {
 	ConfigPtr *Config
 }
 
+func MiddlewareLoggedIn(handler func(s *State, cmd Command, user database.User) error) func(*State, Command) error {
+	
+	return func(s *State, cmd Command) error {
+		user, err := s.Db.GetUser(context.Background(), s.ConfigPtr.CurrentUserName)
+		if err != nil {
+			return fmt.Errorf("unable to get user: %v", err)
+		}
+		return handler(s, cmd, user)
+	}
+}
+
 func HandlerLogin(s *State, cmd Command) error {
 	if len(cmd.Arguments) != 1 {
 		return fmt.Errorf("login expects one argument: username")
@@ -154,13 +165,9 @@ func HandlerAgg(s *State, cmd Command) error {
 	return nil
 }
 
-func HandlerAddFeed(s *State, cmd Command) error {
+func HandlerAddFeed(s *State, cmd Command, user database.User) error {
 	if len(cmd.Arguments) != 2 {
 		return fmt.Errorf("addfeed takes exactly two arguments")
-	}
-	user, err := s.Db.GetUser(context.Background(), s.ConfigPtr.CurrentUserName)
-	if err != nil {
-		return fmt.Errorf("error getting user: %v", err)
 	}
 	FeedID := uuid.New()
 	feed, err := s.Db.AddFeed(context.Background(), database.AddFeedParams{ID: FeedID, Name: cmd.Arguments[0], Url: cmd.Arguments[1], UserID: user.ID})
@@ -192,17 +199,13 @@ func HandlerFeeds(s *State, cmd Command) error {
 	}
 	return nil
 }
-func HandlerFollow(s *State, cmd Command) error {
+func HandlerFollow(s *State, cmd Command, user database.User) error {
 	if len(cmd.Arguments) != 1 {
 		return fmt.Errorf("follow takes one argument")
 	}
 	feed, err := s.Db.GetFeed(context.Background(), cmd.Arguments[0])
 	if err != nil {
 		return fmt.Errorf("unable to get feed: %v", err)
-	}
-	user, err := s.Db.GetUser(context.Background(), s.ConfigPtr.CurrentUserName)
-	if err != nil {
-		return fmt.Errorf("unable to get current user: %v", err)
 	}
 	followID := uuid.New()
 
@@ -216,13 +219,9 @@ func HandlerFollow(s *State, cmd Command) error {
 	return nil
 }
 
-func HandlerFollowing(s *State, cmd Command) error {
+func HandlerFollowing(s *State, cmd Command, user database.User) error {
 	if len(cmd.Arguments) != 0 {
 		return fmt.Errorf("following takes zero arguments")
-	}
-	user, err := s.Db.GetUser(context.Background(), s.ConfigPtr.CurrentUserName)
-	if err != nil {
-		return fmt.Errorf("unable to get user: %v", err)
 	}
 	feedsFollowed, err := s.Db.GetFeedFollowsForUser(context.Background(), user.ID)
 	if err != nil {
@@ -234,6 +233,7 @@ func HandlerFollowing(s *State, cmd Command) error {
 
 	return nil
 }
+
 func getConfigFilePath() string {
 	homeDir, _ := os.UserHomeDir()
 	return homeDir + configFileName

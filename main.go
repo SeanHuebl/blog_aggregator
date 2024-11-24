@@ -36,11 +36,11 @@ func main() {
 	commands.Register("reset", config.HandlerReset)
 	commands.Register("users", config.HandlerGetUsers)
 	commands.Register("agg", config.HandlerAgg)
-	commands.Register("addfeed", config.HandlerAddFeed)
 	commands.Register("feeds", config.HandlerFeeds)
-	commands.Register("follow", config.HandlerFollow)
-	commands.Register("following", config.HandlerFollowing)
-	
+	commands.Register("addfeed", config.MiddlewareLoggedIn(config.HandlerAddFeed))
+	commands.Register("follow", config.MiddlewareLoggedIn(config.HandlerFollow))
+	commands.Register("following", config.MiddlewareLoggedIn(config.HandlerFollowing))
+
 	db, err := sql.Open("postgres", state.ConfigPtr.DbUrl)
 	if err != nil {
 		println(err)
