@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"html"
 	"io"
 	"os"
 	"time"
@@ -154,19 +153,18 @@ func HandlerReset(s *State, cmd Command) error {
 }
 
 func HandlerAgg(s *State, cmd Command) error {
-	if len(cmd.Arguments) != 0 {
-		return fmt.Errorf("agg takes zero arguments")
+	if len(cmd.Arguments) != 1 {
+		return fmt.Errorf("agg takes one argument")
 	}
-	rssURL := "https://www.wagslane.dev/index.xml"
-	feed, err := rss.FetchFeed(context.Background(), rssURL)
+	timeBetweenReqs, err := time.ParseDuration(cmd.Arguments[0])
 	if err != nil {
-		return fmt.Errorf("error fetching feed at %v: %v", rssURL, err)
+		return fmt.Errorf("error parsing time duration: %v", err)
 	}
-	for _, item := range feed.Channel.Item {
-		content := html.UnescapeString(fmt.Sprintf("%v\n\n", item.PubDate))
-		fmt.Println(content)
+	println("Collecting feeds every %v", cmd.Arguments[0])
+	ticker := time.NewTicker(timeBetweenReqs)
+	for ; ; <-ticker.C {
+		ScrapeFeeds(s)
 	}
-	return nil
 }
 
 func HandlerAddFeed(s *State, cmd Command, user database.User) error {
@@ -250,6 +248,22 @@ func HandlerFollowing(s *State, cmd Command, user database.User) error {
 		fmt.Println(feed.FeedName)
 	}
 
+	return nil
+}
+
+func ScrapeFeeds(s *State) error {
+	nextFeed, err := s.Db.GetNextFeedToFetch(context.Background())
+	if err != nil {
+		return fmt.Errorf("unable to fetch next feed: %v", err)
+	}
+	s.Db.MarkFeedFetched(context.Background(), nextFeed.ID)
+	feed, err := rss.FetchFeed(context.Background(), nextFeed.Url)
+	if err != nil {
+		return fmt.Errorf("unable to get feed: %v", err)
+	}
+	for _, item := range feed.Channel.Item {
+		fmt.Printf("Title: %v\n", item.Title)
+	}
 	return nil
 }
 
