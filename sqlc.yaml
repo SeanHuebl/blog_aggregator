@@ -1,8 +1,15 @@
+# Configuration file for sqlc (SQL Code Generator)
+# Version of the sqlc configuration format
 version: "2"
+
 sql:
+  # Path to the directory containing SQL schema files
   - schema: "sql/schema"
+    # Path to the directory containing SQL query files
     queries: "sql/queries"
+    # Specifies the database engine (e.g., postgresql, mysql)
     engine: "postgresql"
     gen:
       go:
+        # Directory where the generated Go code will be placed
         out: "internal/database"
