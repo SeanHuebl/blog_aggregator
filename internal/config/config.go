@@ -162,7 +162,7 @@ func HandlerAgg(s *State, cmd Command) error {
 	if err != nil {
 		return fmt.Errorf("error parsing time duration: %v", err)
 	}
-	println("Collecting feeds every %v", cmd.Arguments[0])
+	fmt.Printf("Collecting feeds every %v\n", cmd.Arguments[0])
 	ticker := time.NewTicker(timeBetweenReqs)
 	for ; ; <-ticker.C {
 		ScrapeFeeds(s)
