@@ -129,7 +129,7 @@ gator <command> [arguments]
 2. **Run the CLI**:
    - Register a user: `gator register user1`
    - Add and follow a feed: `gator addfeed "Tech News" "https://example.com/rss"`
-   - In a seperate terminal run `gator agg <interval>`
+   - In a seperate terminal run: `gator agg <interval>`
    - Browse posts: `gator browse 5`
 
 ---
