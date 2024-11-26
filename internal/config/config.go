@@ -2,6 +2,7 @@ package config
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -261,11 +262,14 @@ func ScrapeFeeds(s *State) error {
 	if err != nil {
 		return fmt.Errorf("unable to get feed: %v", err)
 	}
+	postID := uuid.New()
 	for _, item := range feed.Channel.Item {
-		fmt.Printf("Title: %v\n", item.Title)
+		s.Db.CreatePost(context.Background(), database.CreatePostParams{ID: postID, Title: item.Title, })
 	}
 	return nil
 }
+
+func toNullString(s string) sql.NullString
 
 func getConfigFilePath() string {
 	homeDir, _ := os.UserHomeDir()
