@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -252,6 +253,33 @@ func HandlerFollowing(s *State, cmd Command, user database.User) error {
 	return nil
 }
 
+func HandlerBrowse(s *State, cmd Command, user database.User) error {
+	var limit int
+	var err error
+	if len(cmd.Arguments) > 1 {
+		return fmt.Errorf("browse takes up to one argument")
+	} else if len(cmd.Arguments) == 1 {
+		limit, err = strconv.Atoi(cmd.Arguments[0])
+		if err != nil {
+			return fmt.Errorf("post-browse argument must be an integer: %v", err)
+		}
+	} else {
+		limit = 2
+	}
+
+	posts, err := s.Db.GetPostsForUser(context.Background(), database.GetPostsForUserParams{UserID: user.ID, Limit: int32(limit)})
+	if err != nil {
+		return fmt.Errorf("error getting posts: %v", err)
+	}
+
+	for _, post := range posts {
+		fmt.Printf("Title:\n%v\n\nURL:\n%v\n\n", post.Title.String, post.Url.String)
+		fmt.Printf("Content:\n%v\n\n", post.Description.String)
+		fmt.Printf("Published on:\n%v\n\n", post.PublishedAt.Time)
+	}
+	return nil
+}
+
 func ScrapeFeeds(s *State) error {
 	nextFeed, err := s.Db.GetNextFeedToFetch(context.Background())
 	if err != nil {
@@ -264,12 +292,45 @@ func ScrapeFeeds(s *State) error {
 	}
 	postID := uuid.New()
 	for _, item := range feed.Channel.Item {
-		s.Db.CreatePost(context.Background(), database.CreatePostParams{ID: postID, Title: item.Title, })
+
+		s.Db.CreatePost(
+			context.Background(),
+			database.CreatePostParams{
+				ID: postID, Title: parseToNullString(item.Title),
+				Url:         parseToNullString(item.Link),
+				Description: parseToNullString(item.Description),
+				PublishedAt: parseToNullTime(item.PubDate),
+				FeedID:      nextFeed.ID,
+			},
+		)
 	}
 	return nil
 }
 
-func toNullString(s string) sql.NullString
+func parseToNullTime(date string) sql.NullTime {
+	// List of possible date formats
+	var dateFormats = []string{
+		time.RFC1123,          // "Mon, 02 Jan 2006 15:04:05 MST"
+		time.RFC1123Z,         // "Mon, 02 Jan 2006 15:04:05 -0700"
+		time.RFC3339,          // "2006-01-02T15:04:05Z07:00"
+		"2006-01-02T15:04:05", // ISO 8601 without time zone
+		"2006-01-02",          // Date only
+	}
+	for _, format := range dateFormats {
+		parsedTime, err := time.Parse(format, date)
+		if err != nil {
+			return sql.NullTime{Time: parsedTime, Valid: true}
+		}
+	}
+	return sql.NullTime{Valid: false}
+}
+
+func parseToNullString(s string) sql.NullString {
+	if len(s) == 0 {
+		return sql.NullString{Valid: false}
+	}
+	return sql.NullString{String: s, Valid: true}
+}
 
 func getConfigFilePath() string {
 	homeDir, _ := os.UserHomeDir()
